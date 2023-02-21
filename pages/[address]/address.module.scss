@@ -4,6 +4,7 @@
     'overview overview overview'
     'profile addresses custom'
     'dweb dweb permissions';
+  grid-template-columns: repeat(3, 1fr);
   grid-gap: 24px;
   max-width: var(--max-width);
   margin: 0 auto;

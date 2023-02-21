@@ -1,4 +1,5 @@
 import type { FC } from 'react'
+import type { Storage } from '../../pages/[address]'
 import { useRef, useEffect } from 'react'
 import { Inter } from '@next/font/google'
 import { presetKeys } from '../../utils/constants'
@@ -7,16 +8,13 @@ import styles from './index.module.scss'
 const inter = Inter({ subsets: ['latin'] })
 export type Item = { namespace: string; field?: string }
 
-export type DialogFieldData = Record<string, Partial<Record<string, { value?: string; optional?: string }>>>
-
 const UpdateInfoDialog: FC<{
   item: Item
-  storage: DialogFieldData
-  onSubmit: (newValue: DialogFieldData) => void
+  storage: Storage
+  onSubmit: (newValue: any) => void
   onDismiss: () => void
 }> = ({ item, storage, onDismiss, onSubmit }) => {
   const ref = useRef<HTMLDialogElement>(null)
-  // todo: use cache to fetch value
 
   useEffect(() => {
     if (!ref.current) return
@@ -39,11 +37,6 @@ const UpdateInfoDialog: FC<{
     return () => ref.current?.removeEventListener('close', listener)
   }, [ref.current])
 
-  const content = storage[item.namespace]?.[item.field ?? '']
-  const options = presetKeys[item.namespace as 'profile' | 'dweb' | 'addresses']
-  const hasOptions = Array.isArray(options)
-  const optionsId = `${item.namespace}-${item.field}-options`
-
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.stopPropagation()
     e.preventDefault()
@@ -58,10 +51,15 @@ const UpdateInfoDialog: FC<{
     })
   }
 
+  const substorage: Record<string, any> = storage[item.namespace as keyof Storage]
+  const content = item.field && item.field in substorage ? substorage[item.field] : undefined
+  const options = presetKeys[item.namespace as 'profile' | 'dweb' | 'addresses']
+  const hasOptions = Array.isArray(options)
+  const optionsId = `${item.namespace}-${item.field}-options`
+
   return (
     <dialog ref={ref} className={`${styles.container} ${inter.className}`}>
       <header>{item.field ? `Edit ${item.namespace}` : `Add ${item.namespace}`}</header>
-      {/* <div>{item.namespace}</div> */}
       <form onSubmit={handleSubmit}>
         <div className={styles.field}>
           <label htmlFor="update-field">Key</label>

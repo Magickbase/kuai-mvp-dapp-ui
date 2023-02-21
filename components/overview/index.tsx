@@ -1,12 +1,18 @@
 import type { FC } from 'react'
 import { useRouter } from 'next/router'
 import { useIsOwner } from '../../utils/hooks'
+import Loading from '../loading'
 import styles from './index.module.scss'
 
 const bitAvatarBaseUrl = 'https://identicons.did.id/identicon'
 const Overview: FC<
-  Partial<Record<'avatar' | 'name' | 'description', string>> & { onEditBtnClick: () => void; isEditable: boolean }
-> = ({ avatar, name, description, onEditBtnClick, isEditable }) => {
+  Partial<Record<'avatar' | 'name' | 'description', string>> & {
+    onEditBtnClick: () => void
+    onDestroyBtnClick: () => void
+    isEditable: boolean
+    isLoading: boolean
+  }
+> = ({ avatar, name, description, onEditBtnClick, onDestroyBtnClick, isEditable, isLoading }) => {
   const isOwner = useIsOwner()
 
   const {
@@ -16,7 +22,14 @@ const Overview: FC<
   return (
     <div className={styles.container}>
       <div className={styles.menu} data-is-owner={isOwner}>
-        <button onClick={onEditBtnClick}>{isEditable ? 'View Data' : 'Manage Data'}</button>
+        {isLoading ? (
+          <Loading />
+        ) : (
+          <button onClick={onEditBtnClick} disabled={isLoading}>
+            {isEditable ? 'View Data' : 'Manage Data'}
+          </button>
+        )}
+        {isEditable ? <button onClick={onDestroyBtnClick}>Destroy</button> : null}
       </div>
       <img
         src={avatar || `${bitAvatarBaseUrl}/${name}`}

@@ -1,16 +1,14 @@
 import { useState, useEffect } from 'react'
+import { useSignMessage } from 'wagmi'
 import { useRouter } from 'next/router'
 import { Inter } from '@next/font/google'
 import { useQuery } from 'react-query'
-import { helpers, config, commons, BI, RPC } from '@ckb-lumos/lumos'
-import { omnilock } from '@ckb-lumos/common-scripts'
-import { bytes } from '@ckb-lumos/codec'
-import { blockchain } from '@ckb-lumos/base'
-import { useSignMessage } from 'wagmi'
-import styles from './index.module.scss'
+import { BI, RPC } from '@ckb-lumos/lumos'
 import { useAddresses } from '../utils/hooks'
 import { signTransaction } from '../utils/tx'
 import { SERVER_API, STORAGE_CAPACITY, CKB_NODE } from '../utils/constants'
+import styles from './index.module.scss'
+
 const inter = Inter({ subsets: ['latin'] })
 
 const CKB_DECIMAL = 10 ** 8
@@ -22,7 +20,9 @@ const Index = () => {
   const router = useRouter()
   // patch mismatch hydration
   const [addr, setAddr] = useState<string | undefined>(undefined)
+  const [isLoading, setIsLoading] = useState(false)
   const addresses = useAddresses()
+
   const { signMessageAsync } = useSignMessage()
 
   const { data: storage } = useQuery(
@@ -45,7 +45,7 @@ const Index = () => {
 
   useEffect(() => {
     if (storage) {
-      router.push(`/${addresses.eth}`)
+      router.replace(`/${addresses.eth}`)
     }
   }, [storage, addresses.ckb])
 
@@ -55,6 +55,7 @@ const Index = () => {
 
   const handleClaim = async () => {
     if (!addresses.ckb) return
+    setIsLoading(true)
     try {
       const raw = await fetch(`${SERVER_API}/claim/${addresses.ckb}`, {
         method: 'POST',
@@ -66,13 +67,15 @@ const Index = () => {
 
       const signedTx = await signTransaction(raw, signMessageAsync)
       const txHash = await new RPC(CKB_NODE!).sendTransaction(signedTx, 'passthrough')
-      console.log({ txHash })
+
+      console.info({ claim: txHash })
 
       return { txHash }
     } catch (e) {
       if (e instanceof Error) {
         window.alert(e.message)
       }
+      setIsLoading(false)
     }
   }
 
@@ -84,11 +87,18 @@ const Index = () => {
       <div className={styles.desc}>
         {addr ? null : 'Connect a wallet to view its storage'}
         {currentBalance.gt(MIN_SHANNON) ? (
-          <button onClick={handleClaim}>Claim</button>
+          <button onClick={handleClaim} disabled={isLoading} className={styles.claim}>
+            {isLoading ? 'Claiming' : 'Claim'}
+          </button>
         ) : (
-          <div>{`At least ${MIN_CAPACITY} CKB required, current balance is around ${currentBalance.div(
-            CKB_DECIMAL
-          )} CKB, please claim in faucet`}</div>
+          <div className={styles.faucet}>
+            {`At least ${MIN_CAPACITY} CKB required, current balance is around ${currentBalance.div(
+              CKB_DECIMAL
+            )} CKB, please claim in `}
+            <a href="https://faucet.nervos.org/" target="_blank" rel="noopener noreferrer">
+              Faucet
+            </a>
+          </div>
         )}
       </div>
     </div>

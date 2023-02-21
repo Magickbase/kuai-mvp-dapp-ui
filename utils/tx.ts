@@ -1,5 +1,6 @@
 import type { SignMessageArgs } from '@wagmi/core'
 import { helpers, config, commons } from '@ckb-lumos/lumos'
+import { hexToByteArray } from '@ckb-lumos/helpers/lib/utils'
 import { bytes } from '@ckb-lumos/codec'
 import { blockchain } from '@ckb-lumos/base'
 
@@ -15,8 +16,9 @@ export const signTransaction = async (
   if (!message) {
     throw new Error('Fail to get message to sign')
   }
+  const rawMessage = hexToByteArray(message)
 
-  let signedMessage: string = await signer({ message })
+  let signedMessage: string = await signer({ message: new Uint8Array(rawMessage) })
 
   let v = Number.parseInt(signedMessage.slice(-2), 16)
   if (v >= 27) v -= 27

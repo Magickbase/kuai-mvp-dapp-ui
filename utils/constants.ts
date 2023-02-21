@@ -5,6 +5,10 @@ export const presetKeys = {
 }
 
 export const IS_MAINNET = process.env.NEXT_PUBLIC_CHAIN_TYPE === 'mainnet'
+export const SERVER_API = process.env.NEXT_PUBLIC_SERVER_API
+export const STORAGE_CAPACITY = process.env.NEXT_PUBLIC_STORAGE_CAPACITY
+export const CKB_NODE = process.env.NEXT_PUBLIC_CKB_NODE
+// export const CKB_DECIMAL = 8
 
 export type ProfilePrimaryKey = typeof presetKeys.profile[number]
 export type AddressPrimaryKey = typeof presetKeys.addresses[number]

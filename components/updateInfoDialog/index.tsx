@@ -7,10 +7,12 @@ import styles from './index.module.scss'
 const inter = Inter({ subsets: ['latin'] })
 export type Item = { namespace: string; field?: string }
 
+export type DialogFieldData = Record<string, Partial<Record<string, { value?: string; optional?: string }>>>
+
 const UpdateInfoDialog: FC<{
   item: Item
-  storage: Record<string, Partial<Record<string, { value?: string; optional?: string }>>>
-  onSubmit: (tx: any) => void
+  storage: DialogFieldData
+  onSubmit: (newValue: DialogFieldData) => void
   onDismiss: () => void
 }> = ({ item, storage, onDismiss, onSubmit }) => {
   const ref = useRef<HTMLDialogElement>(null)
@@ -41,17 +43,19 @@ const UpdateInfoDialog: FC<{
   const options = presetKeys[item.namespace as 'profile' | 'dweb' | 'addresses']
   const hasOptions = Array.isArray(options)
   const optionsId = `${item.namespace}-${item.field}-options`
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.stopPropagation()
     e.preventDefault()
-    console.log({
-      field: e.currentTarget['update-field'].value,
-      value: e.currentTarget['update-value'].value,
-      optional: e.currentTarget['update-optional'].value,
+
+    onSubmit({
+      [item.namespace]: {
+        [e.currentTarget['update-field'].value]: {
+          value: e.currentTarget['update-value'].value,
+          optional: e.currentTarget['update-optional'].value,
+        },
+      },
     })
-    // request a tx to update info
-    const mockTx = 'mock tx'
-    onSubmit(mockTx)
   }
 
   return (

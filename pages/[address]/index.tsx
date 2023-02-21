@@ -8,7 +8,6 @@ import UpdateInfoDialog, { Item } from '../../components/updateInfoDialog'
 import { useAddresses, useIsOwner } from '../../utils/hooks'
 import { mockAccount } from '../../utils/mock'
 import styles from './address.module.scss'
-import { txToMsg } from '../../utils/tx'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -39,11 +38,8 @@ export default function Home() {
 
   const addresses = useAddresses()
 
-  const handleSubmit = async (tx: any) => {
-    const msg = txToMsg(tx)
-    // sign message with metamask
-    const signed = await signMessageAsync({ message: msg })
-    console.log(signed)
+  const handleSubmit = async (newValue: any) => {
+    console.log(newValue)
     // send signed to ckb node
   }
 

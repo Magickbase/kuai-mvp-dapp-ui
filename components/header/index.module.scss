@@ -7,7 +7,10 @@
   height: 104px;
   color: #fff;
   .items {
-    span {
+    span,
+    a {
+      color: #fff;
+      text-decoration: none;
       margin-left: 8px;
     }
   }

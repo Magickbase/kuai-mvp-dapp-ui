@@ -1,13 +1,12 @@
 import { useState, useEffect } from 'react'
-import { useSignMessage } from 'wagmi'
 import { useRouter } from 'next/router'
 import { Inter } from '@next/font/google'
 import { useQuery } from 'react-query'
 import { BI, RPC } from '@ckb-lumos/lumos'
-import { useAddresses } from '../utils/hooks'
 import { signTransaction } from '../utils/tx'
 import { SERVER_API, STORAGE_CAPACITY, CKB_NODE } from '../utils/constants'
 import styles from './index.module.scss'
+import { useNexus } from '../utils/nexus'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -18,58 +17,71 @@ const MIN_SHANNON = MIN_CAPACITY.mul(CKB_DECIMAL)
 
 const Index = () => {
   const router = useRouter()
-  // patch mismatch hydration
-  const [addr, setAddr] = useState<string | undefined>(undefined)
   const [isLoading, setIsLoading] = useState(false)
   const [isCopied, setIsCopied] = useState(false)
-  const addresses = useAddresses()
 
-  const { signMessageAsync } = useSignMessage()
+  const { address, signer } = useNexus()
 
   const { data: storage } = useQuery(
-    ['storage', addresses.ckb],
-    () => fetch(`${SERVER_API}/load/${addresses.ckb}`).then((res) => res.json()),
+    ['storage', address],
+    () =>
+      fetch(`${SERVER_API}/load/${address}`).then(async (res) => {
+        const r = await res.json()
+        if (res.status !== 200) {
+          throw new Error(JSON.stringify(r))
+        }
+        return r
+      }),
     {
-      enabled: !!addresses.ckb,
+      enabled: !!address,
       refetchInterval: 10000,
     }
   )
 
   const { data: meta } = useQuery(
-    ['meta', addresses.ckb],
-    () => fetch(`${SERVER_API}/meta/${addresses.ckb}`).then((res) => res.json()),
+    ['meta', address],
+    () =>
+      fetch(`${SERVER_API}/meta/${address}`)
+        .then((res) => {
+          if (res.status !== 200) {
+            throw new Error('fail to fetch meta')
+          }
+          return res.json()
+        })
+        .then((res) => res.data),
     {
-      enabled: !!addresses.ckb,
+      enabled: !!address,
       refetchInterval: 10000,
     }
   )
 
   useEffect(() => {
     if (storage) {
-      router.replace(`/${addresses.eth}`)
+      router.replace(`/${address}`)
     }
-  }, [storage, addresses.ckb])
-
-  useEffect(() => {
-    setAddr(addresses.ckb)
-  }, [addresses.eth])
+  }, [storage, address])
 
   const handleClaim = async () => {
-    if (!addresses.ckb) return
+    if (!address) return
     setIsLoading(true)
     try {
-      const raw = await fetch(`${SERVER_API}/claim/${addresses.ckb}`, {
+      const raw = await fetch(`${SERVER_API}/claim/${address}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ capacity: MIN_SHANNON.toHexString() }),
-      }).then((res) => res.json())
+      })
+        .then((res) => {
+          if (res.status !== 200) {
+            throw new Error('fail to claim')
+          }
+          return res.json()
+        })
+        .then((res) => res.data)
 
-      const signedTx = await signTransaction(raw, signMessageAsync)
+      const signedTx = await signTransaction(raw, signer)
       const txHash = await new RPC(CKB_NODE!).sendTransaction(signedTx, 'passthrough')
-
-      console.info({ claim: txHash })
 
       return { txHash }
     } catch (e) {
@@ -81,8 +93,8 @@ const Index = () => {
   }
 
   const handleCopyAddr = () => {
-    if (addresses.ckb) {
-      window.navigator.clipboard.writeText(addresses.ckb)
+    if (address) {
+      window.navigator.clipboard.writeText(address)
       setIsCopied(true)
       setTimeout(() => {
         setIsCopied(false)
@@ -96,7 +108,7 @@ const Index = () => {
     <div className={`${styles.container} ${inter.className}`}>
       <div className={styles.title}>Kuai MVP DApp Demo</div>
       <div className={styles.desc}>
-        {addr ? (
+        {address ? (
           currentBalance.gt(MIN_SHANNON) ? (
             <button onClick={handleClaim} disabled={isLoading} className={styles.claim}>
               {isLoading ? 'Claiming' : 'Claim'}

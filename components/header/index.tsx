@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { Inter } from '@next/font/google'
 import Wallet from '../wallet'
 import styles from './index.module.scss'
@@ -10,7 +11,7 @@ const Navbar = () => {
       <div>Kuai MVP DApp</div>
       <div className={styles.items}>
         <span>search</span>
-        <span>home</span>
+        <Link href="/">home</Link>
 
         <span>
           <Wallet />

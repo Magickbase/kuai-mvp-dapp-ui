@@ -1,18 +1,17 @@
 import type { ProfilePrimaryKey, AddressPrimaryKey, DwebPrimaryKey, StorageItem } from '../../utils/constants'
-import type { SignMessageArgs } from '@wagmi/core'
 import { useState, useEffect } from 'react'
 import { useQuery } from 'react-query'
 import { useRouter } from 'next/router'
 import { Inter } from '@next/font/google'
 import { RPC } from '@ckb-lumos/lumos'
-import { useSignMessage } from 'wagmi'
 import Overview from '../../components/overview'
 import Section from '../../components/section'
 import UpdateInfoDialog, { Item } from '../../components/updateInfoDialog'
-import { useAddresses, useIsOwner } from '../../utils/hooks'
+import { useIsOwner } from '../../utils/hooks'
 import { signTransaction } from '../../utils/tx'
 import { SERVER_API, CKB_NODE } from '../../utils/constants'
 import styles from './address.module.scss'
+import { useNexus } from '../../utils/nexus'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -30,12 +29,8 @@ const sections: Array<{ namespace: keyof Storage }> = [
   { namespace: 'dweb' },
 ]
 
-const submitNewStorage = async (
-  addresses: ReturnType<typeof useAddresses>,
-  newStorage: Storage,
-  signer: (args?: SignMessageArgs | undefined) => Promise<`0x${string}`>
-) => {
-  const raw = await fetch(`${SERVER_API}/set/${addresses.ckb}`, {
+const submitNewStorage = async (address: string, newStorage: Storage, signer: any) => {
+  const raw = await fetch(`${SERVER_API}/set/${address}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -63,14 +58,13 @@ export default function Home() {
 
   const router = useRouter()
   const isOwner = useIsOwner()
-  const { signMessageAsync } = useSignMessage()
 
-  const addresses = useAddresses()
+  const { address, signer } = useNexus()
 
   const { data: onChainStorage } = useQuery(
-    ['storage', addresses.ckb],
+    ['storage', address],
     () =>
-      fetch(`${SERVER_API}/load/${addresses.ckb}`).then((res) => {
+      fetch(`${SERVER_API}/load/${address}`).then((res) => {
         if (res.status === 404) {
           router.replace('/')
           return
@@ -78,7 +72,7 @@ export default function Home() {
         return res.json()
       }),
     {
-      enabled: !!addresses.ckb,
+      enabled: !!address,
       refetchInterval: 10000,
     }
   )
@@ -97,13 +91,14 @@ export default function Home() {
    * update a specific field
    **/
   const handleSubmit = async (newValue: any) => {
+    if (!address) return
     setIsLoading(true)
     const namespace = Object.keys(newValue)[0]
     const field = Object.keys(newValue[namespace])[0]
     const newStorage = JSON.parse(JSON.stringify(storage))
     newStorage[namespace][field] = newValue[namespace][field]
     try {
-      const res = await submitNewStorage(addresses, newStorage, signMessageAsync)
+      const res = await submitNewStorage(address, newStorage, signer)
     } catch (e) {
       if (e instanceof Error) {
         console.error(e.message)
@@ -120,11 +115,12 @@ export default function Home() {
    * remove a specific field
    **/
   const handleRemove = async (namespace: string, field: string) => {
+    if (!address) return
     setIsLoading(true)
     const newStorage = JSON.parse(JSON.stringify(storage))
     delete newStorage[namespace][field]
     try {
-      const res = await submitNewStorage(addresses, newStorage, signMessageAsync)
+      const res = await submitNewStorage(address, newStorage, signer)
       console.debug({ remove: res?.txHash })
     } catch (e) {
       if (e instanceof Error) {
@@ -143,14 +139,14 @@ export default function Home() {
   const handleDestroyBtnClick = async () => {
     setIsLoading(true)
     try {
-      const raw = await fetch(`${SERVER_API}/clear/${addresses.ckb}`, {
+      const raw = await fetch(`${SERVER_API}/clear/${address}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
       }).then((res) => res.json())
 
-      const signedTx = await signTransaction(raw, signMessageAsync)
+      const signedTx = await signTransaction(raw, signer)
       const txHash = await new RPC(CKB_NODE!).sendTransaction(signedTx, 'passthrough')
       console.info({ destroy: txHash })
       return { txHash }
@@ -221,8 +217,8 @@ export default function Home() {
           <Section
             namespace="permissions"
             records={{
-              owner: { value: addresses.ckb ?? '' },
-              manager: { value: addresses.eth ?? '' },
+              owner: { value: address ?? '' },
+              manager: { value: address ?? '' },
             }}
           />
         </div>

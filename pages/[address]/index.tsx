@@ -43,7 +43,7 @@ const submitNewStorage = async (
     body: JSON.stringify({ value: newStorage }),
   }).then((res) => res.json())
 
-  const signedTx = await signTransaction(raw, signer)
+  const signedTx = await signTransaction(raw.data, signer)
   const txHash = await new RPC(CKB_NODE!).sendTransaction(signedTx, 'passthrough')
 
   console.info({ update: txHash })
@@ -67,6 +67,11 @@ export default function Home() {
 
   const addresses = useAddresses()
 
+  console.log({
+    owner: { value: addresses.ckb ?? '' },
+    manager: { value: addresses.eth ?? '' },
+  })
+
   const { data: onChainStorage } = useQuery(
     ['storage', addresses.ckb],
     () =>
@@ -76,6 +81,18 @@ export default function Home() {
           return
         }
         return res.json()
+      }).then(res => {
+        if (res.code === '404') {
+          router.replace('/')
+          return
+        }
+        return {
+          ...res.data,
+          addresses: res.data?.addresses?.reduce((pre: object, cur: { key: string, value: string; optional?: string }) => ({
+            ...pre,
+            [cur.key]: cur
+          }), {})
+        }
       }),
     {
       enabled: !!addresses.ckb,
@@ -103,7 +120,10 @@ export default function Home() {
     const newStorage = JSON.parse(JSON.stringify(storage))
     newStorage[namespace][field] = newValue[namespace][field]
     try {
-      const res = await submitNewStorage(addresses, newStorage, signMessageAsync)
+      const res = await submitNewStorage(addresses, {
+        ...newStorage,
+        addresses: Object.keys(newStorage?.addresses)?.map(key => ({ key, ...newStorage?.addresses?.[key] }))
+      }, signMessageAsync)
     } catch (e) {
       if (e instanceof Error) {
         console.error(e.message)
@@ -150,7 +170,7 @@ export default function Home() {
         },
       }).then((res) => res.json())
 
-      const signedTx = await signTransaction(raw, signMessageAsync)
+      const signedTx = await signTransaction(raw.data, signMessageAsync)
       const txHash = await new RPC(CKB_NODE!).sendTransaction(signedTx, 'passthrough')
       console.info({ destroy: txHash })
       return { txHash }

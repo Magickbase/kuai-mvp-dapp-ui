@@ -45,7 +45,7 @@ const Index = () => {
   )
 
   useEffect(() => {
-    if (storage) {
+    if (storage?.code === '200' && storage?.data) {
       router.replace(`/${addresses.eth}`)
     }
   }, [storage, addresses.ckb])
@@ -66,7 +66,7 @@ const Index = () => {
         body: JSON.stringify({ capacity: MIN_SHANNON.toHexString() }),
       }).then((res) => res.json())
 
-      const signedTx = await signTransaction(raw, signMessageAsync)
+      const signedTx = await signTransaction(raw.data, signMessageAsync)
       const txHash = await new RPC(CKB_NODE!).sendTransaction(signedTx, 'passthrough')
 
       console.info({ claim: txHash })
@@ -90,7 +90,7 @@ const Index = () => {
     }
   }
 
-  const currentBalance = BI.from(meta?.capacity ?? 0)
+  const currentBalance = BI.from(meta?.data?.capacity ?? 0)
 
   return (
     <div className={`${styles.container} ${inter.className}`}>
